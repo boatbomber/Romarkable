@@ -67,14 +67,16 @@ local function parseText(md)
 end
 
 local richTextLookup = {
-	["*"] = ModifierType.Bold,
+	["**"] = ModifierType.Bold,
+	["__"] = ModifierType.Bold,
+	["*"] = ModifierType.Italic,
 	["_"] = ModifierType.Italic,
 	["~"] = ModifierType.Strike,
 	["`"] = ModifierType.Code,
 }
 
 local function getRichTextModifierType(symbols)
-	return richTextLookup[symbols:sub(1, 1)]
+	return richTextLookup[symbols]
 end
 
 local function richText(md)
