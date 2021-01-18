@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 -- Name:		Markdown.lua
 -- Version:		1.0 (1/17/2021)
--- Author:		Brad Sharp
+-- Authors:		Brad Sharp, Zack Ovits
 --
 -- Repository:	https://github.com/BradSharp/Romarkable
 -- License:		MIT (https://github.com/BradSharp/Romarkable/blob/main/LICENSE)
@@ -128,6 +128,7 @@ local BlockType = {
 	List		= 4,
 	Ruler		= 5,
 	Quote		= 6,
+	Image		= 7,
 }
 
 local CombinedBlocks = {
@@ -175,6 +176,10 @@ local function blockLines(md)
 		-- Ruler
 		if line:match("^%-%-%-+") or line:match("^===+") then
 			return BlockType.Ruler, ""
+		end
+		-- Image
+		if line:match("^%s*!%[%w-|?[%dx]*,? ?%d*%%?%]%(.-%)") then
+			return BlockType.Image, line
 		end
 		-- Heading
 		if line:match("^#") then
@@ -238,6 +243,20 @@ local function blocks(md, markup)
 			block.Indent = indent
 			if blockType == BlockType.Paragraph then
 				block.Text = markup(text)
+			elseif blockType == BlockType.Image then
+				local Title = string.match(text, "^!%[(%w-)|?[%dx]*,? ?%d*%%?%]")
+				local ID = string.match(text,"%((.-)%)$")
+				block.Title = Title or "Unknown"
+				block.ID = ID or "rbxassetid://6266306999"
+				
+				local X,Y = string.match(text ,"^%s*!%[%w-|(%d+)x(%d+)%]*")
+				local x,y = tonumber(X),tonumber(Y)
+				block.Resolution = {X = x and x or 1024, Y = y and y or 1024}
+				block.AspectRatio = (x and x or 1)/(y and y or 1)
+				
+				local Scale = string.match(text, "^%s*!%[%w-|?[%dx]*, (%d+)%%")
+				Scale = (tonumber(Scale) or 100)/100
+				block.Scale = Scale
 			elseif blockType == BlockType.Heading then
 				local level, text = blockText:match("^#+()%s*(.*)")
 				block.Level, block.Text = level - 1, markup(text)
