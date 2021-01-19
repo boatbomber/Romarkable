@@ -273,7 +273,7 @@ local function blocks(md, markup)
 				block.Level, block.Text = level - 1, markup(text)
 			elseif blockType == BlockType.Code then
 				local syntax, code = string.match(text, "^```(.-)\n(.*)\n```$")
-				block.Syntax, block.Code = syntax, syntax == "raw" and code or sanitize(code)
+				block.Syntax, block.Code = syntax, code
 			elseif blockType == BlockType.List then
 				local lines = string.split(blockText, "\n")
 				for i, line in ipairs(lines) do
