@@ -28,11 +28,11 @@ local ModifierType = {
 }
 
 local function sanitize(s)
-	return s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub("\"", "&quot;"):gsub("'", "&apos;")
+	return string.gsub(string.gsub(string.gsub(string.gsub(string.gsub(s, "&","&amp;"), "<","&lt;"), ">","&gt;"), "\"","&quot;"), "'","&apos;")
 end
 
 local function characters(s)
-	return s:gmatch(".")
+	return string.gmatch(s,".")
 end
 
 local function last(t)
@@ -50,12 +50,12 @@ end
 local function parseModifierTokens(md)
 	local index = 1
 	return function ()
-		local text, newIndex = md:match("^([^%*_~`]+)()", index)
+		local text, newIndex = string.match(md,"^([^%*_~`]+)()", index)
 		if text then
 			index = newIndex
 			return false, text
-		elseif index <= md:len() then
-			local text, newIndex = md:match("^(%" .. md:sub(index, index) .. "+)()", index)
+		elseif index <= #md then
+			local text, newIndex = string.match(md,"^(%" .. string.sub(md, index, index) .. "+)()", index)
 			index = newIndex
 			return true, text
 		end
@@ -88,32 +88,38 @@ local function richText(md)
 		[ModifierType.Code]		= {"<font face=\"RobotoMono\">", "</font>"},
 	}
 	local state = {}
-	local output = ""
+	local outputArray,outputIndex = {},0
 	for token, text in parseModifierTokens(md) do
 		if token then
 			local modifierType = getRichTextModifierType(text)
 			if state[ModifierType.Code] and modifierType ~= ModifierType.Code then
-				output = output .. text
+				outputIndex += 1
+				outputArray[outputIndex] = text
 				continue
 			end
 			local symbolState = state[modifierType]
 			if not symbolState then
-				output = output .. tags[modifierType][1]
+				outputIndex += 1
+				outputArray[outputIndex] = tags[modifierType][1]
 				state[modifierType] = text
 			elseif text == symbolState then
-				output = output .. tags[modifierType][2]
+				outputIndex += 1
+				outputArray[outputIndex] = tags[modifierType][2]
 				state[modifierType] = nil
 			else
-				output = output .. text
+				outputIndex += 1
+				outputArray[outputIndex] = text
 			end
 		else
-			output = output .. text
+			outputIndex += 1
+			outputArray[outputIndex] = text
 		end
 	end
 	for modifierType in pairs(state) do
-		output = output .. tags[modifierType][2]
+		outputIndex += 1
+		outputArray[outputIndex] = tags[modifierType][2]
 	end
-	return output
+	return table.concat(outputArray)
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -140,17 +146,17 @@ local CombinedBlocks = {
 }
 
 local function cleanup(s)
-	return s:gsub("\t", "    ")
+	return string.gsub(s, "\t", "    ")
 end
 
 local function getTextWithIndentation(line)
-	local indent, text = line:match("^%s*()(.*)")
+	local indent, text = string.match(line, "^%s*()(.*)")
 	return text, math.floor(indent / 2)
 end
 
 -- Iterator: Iterates the string line-by-line
 local function lines(s)
-	return (s .. "\n"):gmatch("(.-)\n")
+	return string.gmatch(s.."\n", "(.-)\n")
 end
 
 -- Iterator: Categorize each line and allows iteration
@@ -164,38 +170,38 @@ local function blockLines(md)
 		end
 		-- Code
 		if blockType == BlockType.Code then
-			if line:match("^```") then
+			if string.match(line, "^```") then
 				blockType = BlockType.None
 			end
 			return BlockType.Code, line
 		end
 		-- Blank line
-		if line:match("^%s*$") then
+		if string.match(line, "^%s*$") then
 			return BlockType.None, ""
 		end
 		-- Ruler
-		if line:match("^%-%-%-+") or line:match("^===+") then
+		if string.match(line, "^%-%-%-+") or string.match(line, "^===+") then
 			return BlockType.Ruler, ""
 		end
 		-- Image
-		if line:match("^%s*!%[%w-|?[%dx]*,? ?%d*%%?%]%(.-%)") then
+		if string.match(line, "^%s*!%[%w-|?[%dx]*,? ?%d*%%?%]%(.-%)") then
 			return BlockType.Image, line
 		end
 		-- Heading
-		if line:match("^#") then
+		if string.match(line, "^#") then
 			return BlockType.Heading, line
 		end
 		-- Code
-		if line:match("^%s*```") then
+		if string.match(line, "^%s*```") then
 			blockType = BlockType.Code
 			return blockType, line
 		end
 		-- Quote
-		if line:match("^%s*>") then
+		if string.match(line, "^%s*>") then
 			return BlockType.Quote, line
 		end
 		-- List
-		if line:match("^%s*%-%s+") or line:match("^%s*%*%s+") or line:match("^%s*[%u%d]+%.%s+") or line:match("^%s*%+%s+") then
+		if string.match(line, "^%s*%-%s+") or string.match(line, "^%s*%*%s+") or string.match(line, "^%s*[%u%d]+%.%s+") or string.match(line, "^%s*%+%s+") then
 			return BlockType.List, line
 		end
 		-- Paragraph
@@ -216,7 +222,7 @@ local function textBlocks(md)
 			-- Combine paragraphs followed by rulers into headers
 			local text = lastLine
 			lastBlockType, lastLine = it()
-			return BlockType.Heading, ("#"):rep(lastLine:sub(1, 1) == "=" and 2 or 1) .. " " .. text
+			return BlockType.Heading, string.rep("#", string.sub(lastLine, 1, 1) == "=" and 2 or 1) .. " " .. text
 		end
 		local lines = { lastLine }
 		while CombinedBlocks[nextBlockType] and nextBlockType == lastBlockType do
@@ -258,16 +264,16 @@ local function blocks(md, markup)
 				Scale = (tonumber(Scale) or 100)/100
 				block.Scale = Scale
 			elseif blockType == BlockType.Heading then
-				local level, text = blockText:match("^#+()%s*(.*)")
+				local level, text = string.match(blockText, "^#+()%s*(.*)")
 				block.Level, block.Text = level - 1, markup(text)
 			elseif blockType == BlockType.Code then
-				local syntax, code = text:match("^```(.-)\n(.*)\n```$")
+				local syntax, code = string.match(text, "^```(.-)\n(.*)\n```$")
 				block.Syntax, block.Code = syntax, syntax == "raw" and code or sanitize(code)
 			elseif blockType == BlockType.List then
-				local lines = blockText:split("\n")
+				local lines = string.split(blockText, "\n")
 				for i, line in ipairs(lines) do
 					local text, indent = getTextWithIndentation(line)
-					local symbol, text = text:match("^(.-)%s+(.*)")
+					local symbol, text = string.match(text, "^(.-)%s+(.*)")
 					lines[i] = {
 						Level = indent,
 						Text = markup(text),
@@ -276,9 +282,9 @@ local function blocks(md, markup)
 				end
 				block.Lines = lines
 			elseif blockType == BlockType.Quote then
-				local lines = blockText:split("\n")
+				local lines = string.split(blockText, "\n")
 				for i = 1, #lines do
-					lines[i] = lines[i]:match("^%s*>%s*(.*)")
+					lines[i] = string.match(lines[i], "^%s*>%s*(.*)")
 				end
 				local rawText = table.concat(lines, "\n")
 				block.RawText, block.Iterator = rawText, blocks(rawText, markup)
