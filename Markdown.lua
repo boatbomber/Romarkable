@@ -92,6 +92,11 @@ local function richText(md)
 	for token, text in parseModifierTokens(md) do
 		if token then
 			local modifierType = getRichTextModifierType(text)
+			if not modifierType then
+				outputIndex += 1
+				outputArray[outputIndex] = text
+				continue
+			end
 			if state[ModifierType.Code] and modifierType ~= ModifierType.Code then
 				outputIndex += 1
 				outputArray[outputIndex] = text
