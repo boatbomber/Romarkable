@@ -178,12 +178,15 @@ Renderer.BlockToGui = {
 			Line.Parent = Frame
 			local Window = Instance.new("Frame")
 			Window.BackgroundTransparency = 1
-			Window.Size = UDim2.new(1,-20,1,0)
 			Window.Position = UDim2.new(0,15,0,0)
 			Window.Parent = Frame
 			
+			-- Temp size for Render to use
+			Window.Size = UDim2.new(0,ParentFrame.AbsoluteSize.X-20,0,9999)
+
 			Renderer.Render(Window, block.RawText)
 
+			Window.Size = UDim2.new(1,-20,1,0)
 		Frame.Size = UDim2.new(1,0,0,Window.UIListLayout.AbsoluteContentSize.Y+2)
 		return Frame
 	end;
