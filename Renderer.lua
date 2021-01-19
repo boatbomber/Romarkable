@@ -27,6 +27,77 @@ local function GetRichTextSize(Text,TextSize,Font,AbsoluteSize)
 	return SizingLabel.TextBounds
 end
 
+-- Handle DecalIDs vs ImageIDs in images
+local ImageCache = {}
+local function ImageIDHandler(AssetID, ImageLabel)
+	local StrNumbers = string.match(AssetID, "%d+")
+	local Numbers = tonumber(StrNumbers)
+	
+	local ID = ImageCache[StrNumbers]
+	if ID then
+		-- Correct ID already cached
+		ImageLabel.Image = ID
+		return
+	else
+		-- Find correct ID via garbage workarounds :(
+		local ProductInfo
+		
+		local Success, Error = pcall(function()
+			ProductInfo = MarketplaceService:GetProductInfo(StrNumbers, Enum.InfoType.Asset)
+			
+			if ProductInfo.AssetTypeId == 1 then
+				-- It's an image ID, use as is
+				ID = "rbxassetid://"..StrNumbers
+				ImageCache[StrNumbers] = ID
+				ImageLabel.Image = ID
+				return
+					
+			elseif ProductInfo.AssetTypeId == 13 then
+				-- It's a decal ID, so lets do our best to find the image ID before resorting to the low res decal version
+				
+				--Try the old -1 trick for a bit
+				local creatorID = ProductInfo.Creator.Id
+				for i = 0, 50 do
+					local nextAsset = MarketplaceService:GetProductInfo(Numbers-i, Enum.InfoType.Asset)
+
+					if nextAsset.AssetTypeId == 1 and nextAsset.Creator.Id == creatorID then --It's an image ID and same creator, so good odds it's the image we need
+						ID = "rbxassetid://"..(Numbers-i)
+						ImageCache[StrNumbers] = ID
+						ImageLabel.Image = ID
+						return
+					end
+				end
+				
+				-- We didn't find it via the -1 so lets use the low-res thumb
+				ID = "https://www.roblox.com/asset-thumbnail/image?assetId=".. StrNumbers .."&width=420&height=420&format=png"
+				ImageCache[StrNumbers] = ID
+				ImageLabel.Image = ID
+				return
+				
+			end
+		end)
+		if not Success then
+			-- ID find failed, revert to low res or display HTTP error
+			if ProductInfo and ProductInfo.AssetTypeId == 13 then
+				ID = "https://www.roblox.com/asset-thumbnail/image?assetId=".. StrNumbers .."&width=420&height=420&format=png"
+				ImageLabel.Image = ID
+				return
+			else
+				if string.find(Error, "requests") then
+					ImageLabel.Image = "rbxassetid://6270259323" -- HTTP error message
+					ImageLabel.ScaleType = Enum.ScaleType.Fit
+					return
+				else
+					ImageLabel.Image = "rbxassetid://6266306999" -- Broken image
+					ImageLabel.ScaleType = Enum.ScaleType.Fit
+					return
+				end
+			end
+		end
+		
+	end
+end
+
 -- Block render handlers
 Renderer.BlockToGui = {
 	
@@ -88,8 +159,11 @@ Renderer.BlockToGui = {
 		Frame.BackgroundTransparency = 1
 			local Image = Instance.new("ImageLabel")
 			Image.BackgroundTransparency = 1
-			Image.Image = block.ID or "rbxassetid://6266306999"
 			Image.Size = UDim2.new(0,Size*(block.AspectRatio or 1),0,Size)
+
+			local ImageThread = coroutine.create(ImageIDHandler)
+			coroutine.resume(ImageThread, block.ID or "rbxassetid://6266306999", Image)
+
 			Image.Parent = Frame
 
 		Frame.Size = UDim2.new(1,0,0,Size+3)
