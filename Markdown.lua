@@ -72,7 +72,9 @@ local richTextLookup = {
 	["*"] = ModifierType.Italic,
 	["_"] = ModifierType.Italic,
 	["~"] = ModifierType.Strike,
+	["~~"] = ModifierType.Strike,
 	["`"] = ModifierType.Code,
+	["``"] = ModifierType.Code,
 }
 
 local function getRichTextModifierType(symbols)
