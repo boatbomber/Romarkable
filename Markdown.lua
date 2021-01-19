@@ -142,6 +142,9 @@ local BlockType = {
 	Ruler		= 5,
 	Quote		= 6,
 	Image		= 7,
+
+
+	LuaLearningImage	= 15,
 }
 
 local CombinedBlocks = {
@@ -193,6 +196,10 @@ local function blockLines(md)
 		-- Image
 		if string.match(line, "^%s*!%[%w-|?[%dx]*,? ?%d*%%?%]%(.-%)") then
 			return BlockType.Image, line
+		end
+		-- Lua Learning Image
+		if string.match(line, "^%s*%(rbxassetid://%d-:[%d%.]-:[%d%.]-%)") then
+			return BlockType.LuaLearningImage, line
 		end
 		-- Heading
 		if string.match(line, "^#") then
@@ -263,6 +270,16 @@ local function blocks(md, markup)
 				block.ID = ID or "rbxassetid://6266306999"
 				
 				local X,Y = string.match(text ,"^%s*!%[%w-|(%d+)x(%d+)%]*")
+				local x,y = tonumber(X),tonumber(Y)
+				block.Resolution = {X = x and x or 1024, Y = y and y or 1024}
+				block.AspectRatio = (x and x or 1)/(y and y or 1)
+				
+				local Scale = string.match(text, "^%s*!%[%w-|?[%dx]*, (%d+)%%")
+				Scale = (tonumber(Scale) or 100)/100
+				block.Scale = Scale
+			elseif blockType == BlockType.LuaLearningImage then
+				local ID, X, Y = string.match(text,"%(rbxassetid://(%d-):([%d%.]-):([%d%.]-)%)")
+				block.ID = ID or "6266306999"
 				local x,y = tonumber(X),tonumber(Y)
 				block.Resolution = {X = x and x or 1024, Y = y and y or 1024}
 				block.AspectRatio = (x and x or 1)/(y and y or 1)
