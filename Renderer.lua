@@ -1,5 +1,6 @@
 -- Services
 local TextService = game:GetService("TextService")
+local MarketplaceService = game:GetService("MarketplaceService")
 -- Dependancies
 local Markdown = require(script.Markdown)
 	local BlockType = Markdown.BlockType
